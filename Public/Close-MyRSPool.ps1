@@ -29,6 +29,11 @@ function Close-MyRSPool()
     # Close RunspacePools, This will Stop all Running Jobs
     ForEach ($Pool in $RSPool)
     {
+      if (-not [String]::IsNullOrEmpty($Pool.Mutex))
+      {
+        $Pool.Mutex.Close()
+        $Pool.Mutex.Dispose()
+      }
       $Pool.RunspacePool.Close()
       $Pool.RunspacePool.Dispose()
     }

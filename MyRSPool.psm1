@@ -21,11 +21,12 @@ Write-Verbose -Message ""
 
 $Params = @{ }
 
-#region ******** Add Custom MyRSPool / MyRSJob Types ********
-$MyTypeData = @"
+#region ********* Custom Objects MyRSPool / MyRSJob *********
+$MyCustom = @"
 using System;
 using System.Collections.Generic;
 using System.Management.Automation;
+using System.Threading;
 
 public class MyRSJob
 {
@@ -176,11 +177,38 @@ public class MyRSPool
   private System.String _Name;  
   private System.Management.Automation.Runspaces.RunspacePool _RunspacePool;
   public System.Collections.Generic.List<MyRSJob> Jobs = new System.Collections.Generic.List<MyRSJob>();
+  private System.Collections.Hashtable _SyncedHash;
+  private System.Threading.Mutex _Mutex;  
 
-  public MyRSPool(System.String Name, System.Management.Automation.Runspaces.RunspacePool RunspacePool)
+  public MyRSPool(System.String Name, System.Management.Automation.Runspaces.RunspacePool RunspacePool, System.Collections.Hashtable SyncedHash) 
   {
     _Name = Name;
     _RunspacePool = RunspacePool;
+    _SyncedHash = SyncedHash;
+  }
+
+  public MyRSPool(System.String Name, System.Management.Automation.Runspaces.RunspacePool RunspacePool, System.Collections.Hashtable SyncedHash, System.String Mutex) 
+  {
+    _Name = Name;
+    _RunspacePool = RunspacePool;
+    _SyncedHash = SyncedHash;
+    _Mutex = new System.Threading.Mutex(false, Mutex);
+  }
+
+  public System.Collections.Hashtable SyncedHash
+  {
+    get
+    {
+      return _SyncedHash;
+    }
+  }
+
+  public System.Threading.Mutex Mutex
+  {
+    get
+    {
+      return _Mutex;
+    }
   }
 
   public System.String Name
@@ -216,7 +244,7 @@ public class MyRSPool
   }
 }
 "@
-Add-Type -TypeDefinition $MyTypeData -Debug:$False
+Add-Type -TypeDefinition $MyCustom -Debug:$False
 #endregion
 
 #region ******** Update Format & Type Data ********

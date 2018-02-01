@@ -27,7 +27,7 @@
 	Author = 'Ken Sweet'
 	
 	# Company or vendor of this module
-	CompanyName = 'Chaotic Thoughts'
+	CompanyName = 'My Power Scripts'
 	
 	# Copyright statement for this module
 	Copyright = '(c) 2017. All rights reserved.'

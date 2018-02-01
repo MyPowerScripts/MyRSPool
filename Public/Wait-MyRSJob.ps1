@@ -19,7 +19,7 @@ function Wait-MyRSJob()
       State of Jobs to search for
     .PARAMETER ScriptBlock
       ScriptBlock to invoke while waiting
-      
+
       For windows Forms scripts add the DoEvents method in to the Wait ScritpBlock
 
       [System.Windows.Forms.Application]::DoEvents()
@@ -59,7 +59,7 @@ function Wait-MyRSJob()
     [parameter(Mandatory = $False, ParameterSetName = "InstanceId")]
     [ValidateSet("NotStarted", "Running", "Stopping", "Stopped", "Completed", "Failed", "Disconnected")]
     [String[]]$State,
-    [ScriptBlock]$SciptBlock = { [System.Threading.Thread]::Sleep(250) },
+    [ScriptBlock]$SciptBlock = { [System.Windows.Forms.Application]::DoEvents() },
     [ValidateRange("0:00:00", "8:00:00")]
     [TimeSpan]$Wait = "0:05:00",
     [Switch]$NoWait
@@ -102,7 +102,7 @@ function Wait-MyRSJob()
     {
       $Jobs.AddRange(@(Get-MyRSJob @PSBoundParameters))
     }
-    
+
     Write-Verbose -Message "Exit Function Wait-MyRSJob Process Block"
   }
   End
@@ -110,7 +110,7 @@ function Wait-MyRSJob()
     Write-Verbose -Message "Enter Function Wait-MyRSJob End Block"
     
     # Wait for Jobs to be Finshed
-    if ($NoWait)
+    if ($NoWait.IsPresent)
     {
       While (@(($Jobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -eq $Jobs.Count)
       {
@@ -121,7 +121,7 @@ function Wait-MyRSJob()
     {
       $WaitJobs = $Jobs.Clone()
       $Start = [DateTime]::Now
-      While (@(($WaitJobs = $WaitJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -and (([DateTime]::Now - $Start) -le $Wait))
+      While (@(($WaitJobs = $WaitJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -and ((([DateTime]::Now - $Start) -le $Wait) -or ($Wait.Ticks -eq 0)))
       {
         $SciptBlock.Invoke()
       }
