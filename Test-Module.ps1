@@ -41,22 +41,13 @@ Function Test-Function
     [Object[]]$Value = "Default Value"
   )
   Write-Verbose -Message "Enter Function Test-Function"
-  Try
+  
+  Start-Sleep -Milliseconds (1000 * 5)
+  ForEach ($Item in $Value)
   {
-    ForEach ($Item in $Value)
-    {
-      Start-Sleep -Milliseconds (5000 * (($Item % 3) + 1))
-      "Return Value: `$Item = $Item"
-    }
+    "Return Value: `$Item = $Item"
   }
-  Catch
-  {
-    Write-Debug -Message "ErrMsg: $($Error[0].Exception.Message)"
-    Write-Debug -Message "Line: $($Error[0].InvocationInfo.ScriptLineNumber)"
-    Write-Debug -Message "Code: $(($Error[0].InvocationInfo.Line).Trim())"
-  }
-  [System.GC]::Collect()
-  [System.GC]::WaitForPendingFinalizers()
+  
   Write-Verbose -Message "Exit Function Test-Function"
 }
 #endregion
@@ -73,7 +64,13 @@ $ScriptBlock = {
     .EXAMPLE
       Test-Script.ps1 -InputObject $InputObject
     .NOTES
-      Original Script By Ken Sweet on 10/15/2017 at 06:53 AM
+      Original Script By Ken Sweet on 10/15/2017
+      Updated Script By Ken Sweet on 02/04/2019
+  
+      Thread Script Variables
+        [String]$Mutex - Exist only if -Mutex was specified on the Start-MyRSPool command line
+        [HashTable]$SyncedHash - Always Exists, Default values $SyncedHash.Enabled = $True
+  
     .LINK
   #>
   [CmdletBinding(DefaultParameterSetName = "ByValue")]
@@ -82,32 +79,55 @@ $ScriptBlock = {
     [Object[]]$InputObject
   )
   
-  Test-Function -Value $InputObject
+  # Generate Error Message to show in Error Buffer
+  $ErrorActionPreference = "Continue"
+  GenerateErrorMessage
+  $ErrorActionPreference = "Stop"
   
-  if ([String]::IsNullOrEmpty($Mutex))
+  # Enable Verbose logging
+  $VerbosePreference = "Continue"
+  
+  # Check is Thread is Enabled to Run
+  if ($SyncedHash.Enabled)
   {
-    $HasMutex = $False
+    # Call Imported Test Function
+    Test-Function -Value $InputObject
+    
+    # Check if a Mutex exist
+    if ([String]::IsNullOrEmpty($Mutex))
+    {
+      $HasMutex = $False
+    }
+    else
+    {
+      # Open and wait for Mutex
+      $MyMutex = [System.Threading.Mutex]::OpenExisting($Mutex)
+      [Void]($MyMutex.WaitOne())
+      $HasMutex = $True
+    }
+    
+    # Write Data to the Screen
+    For ($Count = 0; $Count -le 8; $Count++)
+    {
+      Write-Host -Object "`$InputObject = $InputObject"
+    }
+    
+    # Release the Mutex if it Exists
+    if ($HasMutex)
+    {
+      $MyMutex.ReleaseMutex()
+    }
   }
   else
   {
-    $MyMutex = [System.Threading.Mutex]::OpenExisting($Mutex)
-    [Void]($MyMutex.WaitOne())
-    $HasMutex = $True
-  }
-  For ($Count = 0; $Count -le 8; $Count++)
-  {
-    Write-Host -Object "`$InputObject = $InputObject"
-  }
-  if ($HasMutex)
-  {
-    $MyMutex.ReleaseMutex()
+    "Return Value: RSJob was Canceled"
   }
 }
 #endregion
 
 #region $WaitScript
 $WaitScript = {
-  Write-Host -Object "Completed $(@($MyRSPool.Jobs | Where-Object -FilterScript { $PSItem.State -eq 'Completed' }).Count) Jobs"
+  Write-Host -Object "Completed $(@(Get-MyRSJob | Where-Object -FilterScript { $PSItem.State -eq 'Completed' }).Count) Jobs"
   Start-Sleep -Milliseconds 1000
 }
 #endregion
@@ -115,23 +135,26 @@ $WaitScript = {
 $TestFunction = @{}
 $TestFunction.Add("Test-Function", (Get-Command -Type Function -Name Test-Function).ScriptBlock)
 
+# Start and Get RSPool
+$RSPool = Start-MyRSPool -MaxJobs 8 -Functions $TestFunction -PassThru #-Mutex "TestMutex"
+
 # Create new RunspacePool and start 5 Jobs
-$MyRSPool = 1..5 | Start-MyRSJob -ScriptBlock $ScriptBlock -Functions $TestFunction -MaxJobs 4 -Mutex "TestMe"
-$MyRSPool.Jobs | Out-String
+1..10 | Start-MyRSJob -ScriptBlock $ScriptBlock -PassThru | Out-String
 
 # Add 5 new Jobs to an existing RunspacePool
-6..10 | Start-MyRSJob -RSPool $MyRSPool -ScriptBlock $ScriptBlock
-$MyRSPool.Jobs | Out-String
+11..20 | Start-MyRSJob -ScriptBlock $ScriptBlock -PassThru | Out-String
+
+# Disable Thread Script
+#$RSPool.SyncedHash.Enabled = $False
 
 # Wait for all Jobs to Complete or Fail
-$MyRSjobs = $MyRSPool.Jobs | Wait-MyRSJob -RSPool $MyRSPool -SciptBlock $WaitScript
-$MyRSPool.Jobs | Out-String
+Get-MyRSJob | Wait-MyRSJob -SciptBlock $WaitScript -PassThru | Out-String
 
 # Receive Completed Jobs and Remove them
-$MyRSjobs | Receive-MyRSJob -RSPool $MyRSPool -AutoRemove
+Get-MyRSJob | Receive-MyRSJob -AutoRemove
 
 # Close RunspacePool
-Close-MyRSPool -RSPool $MyRSPool
+Close-MyRSPool
 
 $Host.EnterNestedPrompt()
 

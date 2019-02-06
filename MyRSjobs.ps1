@@ -199,7 +199,6 @@ public class MyRSPool
 Add-Type -TypeDefinition $MyCustom -Debug:$False
 #endregion
 
-
 #region function Start-MyRSJob
 function Start-MyRSJob()
 {
@@ -231,21 +230,26 @@ function Start-MyRSJob()
     .PARAMETER PSSnapins
       PSSnapins to load in the initial Session State
     .PARAMETER MaxJobs
+      Maximum Number of Jobs
+    .PARAMETER Hashtable
+      Synced Hasttable to pass values between threads
+    .PARAMETER Mutex
+      Protects access to a shared resource
     .EXAMPLE
       $MyRSPool = Start-MyRSJob -ScriptBlock $ScriptBlock -PoolName $PoolName -JobName $JobName -MaxJobs $MaxJobs -InputObject $InputObject
-  
+
       Create New RunspacePool and add new Jobs
     .EXAMPLE
       $MyRSPool = $InputObject | Start-MyRSJob -ScriptBlock $ScriptBlock -PoolName $PoolName -JobName $JobName -MaxJobs $MaxJobs
-  
+
       Create New RunspacePool and add new Jobs
     .EXAMPLE
       Start-MyRSJob -RSPool $MyRSPool -ScriptBlock $ScriptBlock -JobName -InputObject $InputObject
-  
+
       Update existing RunspacePool with new Jobs
     .EXAMPLE
       $InputObject | Start-MyRSJob -RSPool $MyRSPool -ScriptBlock $ScriptBlock -JobName
-  
+
       Update existing RunspacePool with new Jobs
     .NOTES
       Original Function By Ken Sweet
@@ -263,19 +267,22 @@ function Start-MyRSJob()
     [String]$JobName = "Job Name",
     [parameter(Mandatory = $True)]
     [ScriptBlock]$ScriptBlock,
+    [Hashtable]$Parameters,
     [parameter(Mandatory = $False, ParameterSetName = "New")]
-    [HashTable]$Parameters,
+    [Hashtable]$Functions,
     [parameter(Mandatory = $False, ParameterSetName = "New")]
-    [HashTable]$Functions,
-    [parameter(Mandatory = $False, ParameterSetName = "New")]
-    [HashTable]$Variables,
+    [Hashtable]$Variables,
     [parameter(Mandatory = $False, ParameterSetName = "New")]
     [String[]]$Modules,
     [parameter(Mandatory = $False, ParameterSetName = "New")]
     [String[]]$PSSnapins,
     [parameter(Mandatory = $False, ParameterSetName = "New")]
     [ValidateRange(1, 16)]
-    [Int]$MaxJobs = 8
+    [Int]$MaxJobs = 8,
+    [parameter(Mandatory = $False, ParameterSetName = "New")]
+    [Hashtable]$Hashtable = @{"Enabled" = $True},
+    [parameter(Mandatory = $False, ParameterSetName = "New")]
+    [String]$Mutex
   )
   Begin
   {
@@ -319,14 +326,31 @@ function Start-MyRSJob()
         ForEach ($Key in $Variables.Keys)
         {
           #$InitialSessionState.Variables.Add(([System.Management.Automation.Runspaces.SessionStateVariableEntry]::New($Key, $Variables[$Key], "$Key = $($Variables[$Key])")))
-          $InitialSessionState.Variables.Add((New-Object -TypeName System.Management.Automation.Runspaces.SessionStateVariableEntry -ArgumentList $Key, $Variables[$Key], "$Key = $($Variables[$Key])"))
+          $InitialSessionState.Variables.Add((New-Object -TypeName System.Management.Automation.Runspaces.SessionStateVariableEntry -ArgumentList $Key, $Variables[$Key], "$Key = $($Variables[$Key])", ([System.Management.Automation.ScopedItemOptions]::AllScope)))
         }
       }
       
       # Create and Open RunSpacePool
-      #$Return = [MyRSPool]::New($PoolName, ([Management.Automation.Runspaces.RunspaceFactory]::CreateRunspacePool(1, $MaxJobs, $InitialSessionState, $Host)))
-      $Return = New-Object -TypeName "MyRSPool" -ArgumentList $PoolName, ([Management.Automation.Runspaces.RunspaceFactory]::CreateRunspacePool(1, $MaxJobs, $InitialSessionState, $Host))
+      $SyncedHash = [Hashtable]::Synchronized($Hashtable)
+      #$InitialSessionState.Variables.Add(([System.Management.Automation.Runspaces.SessionStateVariableEntry]::New("Hashtable", $Hashtable, "Hashtable = Synced Hashtable")))
+      $InitialSessionState.Variables.Add((New-Object -TypeName System.Management.Automation.Runspaces.SessionStateVariableEntry -ArgumentList "SyncedHash", $SyncedHash, "SyncedHash = Synced Hashtable", ([System.Management.Automation.ScopedItemOptions]::AllScope)))
+      if ($PSBoundParameters.ContainsKey("Mutex"))
+      {
+        #$InitialSessionState.Variables.Add(([System.Management.Automation.Runspaces.SessionStateVariableEntry]::New("Mutex", $Mutex, "Mutex = $Mutex")))
+        $InitialSessionState.Variables.Add((New-Object -TypeName System.Management.Automation.Runspaces.SessionStateVariableEntry -ArgumentList "Mutex", $Mutex, "Mutex = $Mutex", ([System.Management.Automation.ScopedItemOptions]::AllScope)))
+        $CreateRunspacePool = [Management.Automation.Runspaces.RunspaceFactory]::CreateRunspacePool(1, $MaxJobs, $InitialSessionState, $Host)
+        #$Return = [MyRSPool]::New($PoolName, $CreateRunspacePool, $Hashtable, $Mutex)
+        $Return = New-Object -TypeName "MyRSPool" -ArgumentList $PoolName, $CreateRunspacePool, $SyncedHash, $Mutex
+      }
+      else
+      {
+        #$Return = [MyRSPool]::New($PoolName, $CreateRunspacePool, $Hashtable)
+        $CreateRunspacePool = [Management.Automation.Runspaces.RunspaceFactory]::CreateRunspacePool(1, $MaxJobs, $InitialSessionState, $Host)
+        $Return = New-Object -TypeName "MyRSPool" -ArgumentList $PoolName, $CreateRunspacePool, $SyncedHash
+      }
+      
       $Return.RunspacePool.ApartmentState = "STA"
+      #$Return.RunspacePool.ApartmentState = "MTA"
       $Return.RunspacePool.CleanupInterval = [TimeSpan]::FromMinutes(2)
       $Return.RunspacePool.Open()
     }
@@ -378,8 +402,6 @@ function Start-MyRSJob()
       #[Void]$Return.Jobs.Add(([MyRSjob]::New($JobName, $PowerShell, $PowerShell.BeginInvoke(), $Null)))
       [Void]$Return.Jobs.Add((New-Object -TypeName "MyRSjob" -ArgumentList $JobName, $PowerShell, $PowerShell.BeginInvoke(), $Null))
     }
-    
-    
     
     Write-Verbose -Message "Exit Function Start-MyRSJob Process Block"
   }

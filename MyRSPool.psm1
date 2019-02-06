@@ -8,7 +8,8 @@
   .EXAMPLE
     Import-Module -Name "D:\MyTest\MyRSPool\MyRSPool.psm1"
   .NOTES
-    Original Script By Ken Sweet on 10/15/2017 at 06:53 AM
+    Original Script By Ken Sweet on 10/15/2017
+    Updated Script By Ken Sweet on 02/04/2019
   .LINK
 #>
 
@@ -22,6 +23,7 @@ Write-Verbose -Message ""
 $Params = @{ }
 
 #region ********* Custom Objects MyRSPool / MyRSJob *********
+
 $MyCustom = @"
 using System;
 using System.Collections.Generic;
@@ -31,13 +33,17 @@ using System.Threading;
 public class MyRSJob
 {
   private System.String _Name;
+  private System.String _PoolName;
+  private System.Guid _PoolID;
   private System.Management.Automation.PowerShell _PowerShell;
   private System.IAsyncResult _PowerShellAsyncResult;
   private System.Object _InputObject = null;
 
-  public MyRSJob(System.String Name, System.Management.Automation.PowerShell PowerShell, System.IAsyncResult PowerShellAsyncResult, System.Object InputObject)
+  public MyRSJob(System.String Name, System.Management.Automation.PowerShell PowerShell, System.IAsyncResult PowerShellAsyncResult, System.Object InputObject, System.String PoolName, System.Guid PoolID)
   {
     _Name = Name;
+    _PoolName = PoolName;
+    _PoolID = PoolID;
     _PowerShell = PowerShell;
     _PowerShellAsyncResult = PowerShellAsyncResult;
     _InputObject = InputObject;
@@ -59,6 +65,21 @@ public class MyRSJob
     }
   }
 
+  public System.String PoolName
+  {
+    get
+    {
+      return _PoolName;
+    }
+  }
+
+  public System.Guid PoolID
+  {
+    get
+    {
+      return _PoolID;
+    }
+  }
   public System.Management.Automation.PowerShell PowerShell
   {
     get
@@ -245,9 +266,13 @@ public class MyRSPool
 }
 "@
 Add-Type -TypeDefinition $MyCustom -Debug:$False
+
+$Script:MyHiddenRSPool = New-Object -TypeName "System.Collections.Generic.Dictionary[[String], [MyRSPool]]"
+
 #endregion
 
 #region ******** Update Format & Type Data ********
+
 if ([System.IO.Directory]::Exists("$PSModuleRoot\TypeData"))
 {
   Write-Verbose -Message "Updating Format and Type Data"
@@ -266,9 +291,11 @@ if ([System.IO.Directory]::Exists("$PSModuleRoot\TypeData"))
   }
   Write-Verbose -Message ""
 }
+
 #endregion
 
 #region ******** Load Private Commands ********
+
 if ([System.IO.Directory]::Exists("$PSModuleRoot\Private"))
 {
   Write-Verbose -Message "Loading Private Functions"
@@ -279,9 +306,11 @@ if ([System.IO.Directory]::Exists("$PSModuleRoot\Private"))
   }
   Write-Verbose -Message ""
 }
+
 #endregion
 
 #region ******** Load Public Commands ********
+
 $Functions = @()
 if ([System.IO.Directory]::Exists("$PSModuleRoot\Public"))
 {
@@ -298,9 +327,11 @@ if ($Functions.Count)
 {
   $Params.Function = $Functions
 }
+
 #endregion
 
 #region ******** Load Public Variables ********
+
 Write-Verbose -Message "Loading Public Variables"
 $Variables = @()
 Write-Verbose -Message ""
@@ -308,6 +339,7 @@ if ($Variables.Count)
 {
   $Params.Variable = $Variables
 }
+
 #endregion
 
 Export-ModuleMember @Params

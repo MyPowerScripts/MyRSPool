@@ -9,33 +9,65 @@ function Close-MyRSPool()
       Close RunspacePool and Stop all Running Jobs
     .PARAMETER RSPool
       RunspacePool to clsoe
+    .PARAMETER PoolName
+      Name of RSPool to close
+    .PARAMETER PoolID
+      PoolID of Job to close
+    .PARAMETER State
+      State of Jobs to close
     .EXAMPLE
-      Close-MyRSPool -RSPool $MyRSPool
+      Close-MyRSPool
+  
+      Close the Default RSPool
     .EXAMPLE
-      $MyRSPool | Close-MyRSPool
+      Close-MyRSPool -PoolName $PoolName
+  
+      Close-MyRSPool -PoolID $PoolID
+  
+      Close Specified RSPools
     .NOTES
-      Original Function By Ken Sweet
+      Original Script By Ken Sweet on 10/15/2017
+      Updated Script By Ken Sweet on 02/04/2019
     .LINK
   #>
-  [CmdletBinding()]
+  [CmdletBinding(DefaultParameterSetName = "All")]
   param (
-    [parameter(Mandatory = $True, ValueFromPipeline = $True, ValueFromPipelineByPropertyName = $True)]
-    [MyRSPool[]]$RSPool
+    [parameter(Mandatory = $True, ValueFromPipeline = $True, ParameterSetName = "RSPool")]
+    [MyRSPool[]]$RSPool,
+    [parameter(Mandatory = $True, ParameterSetName = "PoolName")]
+    [String[]]$PoolName = "MyDefaultRSPool",
+    [parameter(Mandatory = $True, ParameterSetName = "PoolID")]
+    [Guid[]]$PoolID,
+    [parameter(Mandatory = $False, ParameterSetName = "All")]
+    [parameter(Mandatory = $False, ParameterSetName = "PoolName")]
+    [parameter(Mandatory = $False, ParameterSetName = "PoolID")]
+    [ValidateSet("BeforeOpen", "Opening", "Opened", "Closed", "Closing", "Broken", "Disconnecting", "Disconnected", "Connecting")]
+    [String[]]$State
   )
   Process
   {
     Write-Verbose -Message "Enter Function Close-MyRSPool Process Block"
     
-    # Close RunspacePools, This will Stop all Running Jobs
-    ForEach ($Pool in $RSPool)
+    If ($PSCmdlet.ParameterSetName -eq "RSPool")
     {
-      if (-not [String]::IsNullOrEmpty($Pool.Mutex))
+      $TempPools = $RSPool
+    }
+    else
+    {
+      $TempPools = Get-MyRSPool @PSBoundParameters
+    }
+    
+    # Close RunspacePools, This will Stop all Running Jobs
+    ForEach ($TempPool in $TempPools)
+    {
+      if (-not [String]::IsNullOrEmpty($TempPool.Mutex))
       {
-        $Pool.Mutex.Close()
-        $Pool.Mutex.Dispose()
+        $TempPool.Mutex.Close()
+        $TempPool.Mutex.Dispose()
       }
-      $Pool.RunspacePool.Close()
-      $Pool.RunspacePool.Dispose()
+      $TempPool.RunspacePool.Close()
+      $TempPool.RunspacePool.Dispose()
+      [Void]$Script:MyHiddenRSPool.Remove($TempPool.Name)
     }
     
     Write-Verbose -Message "Exit Function Close-MyRSPool Process Block"

@@ -11,6 +11,8 @@ function Start-MyRSJob()
       RunspacePool to add new RunspacePool Jobs to
     .PARAMETER PoolName
       Name of RunspacePool
+    .PARAMETER PoolID
+      ID of RunspacePool
     .PARAMETER InputObject
       Object / Value to pass to the RunspacePool Job ScriptBlock
     .PARAMETER InputParam
@@ -21,139 +23,68 @@ function Start-MyRSJob()
       RunspacePool Job ScriptBock to Execute
     .PARAMETER Parameters
       Common Paramaters to pass to the RunspacePool Job ScriptBlock
-    .PARAMETER Functions
-      Functions to include in the initial Session State
-    .PARAMETER Variables
-      Variables to include in the initial Session State
-    .PARAMETER Modules
-      Modules to load in the initial Session State
-    .PARAMETER PSSnapins
-      PSSnapins to load in the initial Session State
-    .PARAMETER MaxJobs
-      Maximum Number of Jobs
-    .PARAMETER Hashtable
-      Synced Hasttable to pass values between threads
-    .PARAMETER Mutex
-      Protects access to a shared resource
+    .PARAMETER PassThru
+      Return the New Jobs to the Pipeline
     .EXAMPLE
-      $MyRSPool = Start-MyRSJob -ScriptBlock $ScriptBlock -PoolName $PoolName -JobName $JobName -MaxJobs $MaxJobs -InputObject $InputObject
+      Start-MyRSJob -ScriptBlock $ScriptBlock -JobName $JobName -InputObject $InputObject
 
-      Create New RunspacePool and add new Jobs
+      Add new RSJobs to the Default RSPool
     .EXAMPLE
-      $MyRSPool = $InputObject | Start-MyRSJob -ScriptBlock $ScriptBlock -PoolName $PoolName -JobName $JobName -MaxJobs $MaxJobs
+      $InputObject | Start-MyRSJob -ScriptBlock $ScriptBlock -RSPool $RSPool -JobName $JobName
+  
+      $InputObject | Start-MyRSJob -ScriptBlock $ScriptBlock -PoolName $PoolName -JobName $JobName
+  
+      $InputObject | Start-MyRSJob -ScriptBlock $ScriptBlock -PoolID $PoolID -JobName $JobName
 
-      Create New RunspacePool and add new Jobs
-    .EXAMPLE
-      Start-MyRSJob -RSPool $MyRSPool -ScriptBlock $ScriptBlock -JobName -InputObject $InputObject
-
-      Update existing RunspacePool with new Jobs
-    .EXAMPLE
-      $InputObject | Start-MyRSJob -RSPool $MyRSPool -ScriptBlock $ScriptBlock -JobName
-
-      Update existing RunspacePool with new Jobs
+      Add new RSJobs to the Specified RSPool
     .NOTES
-      Original Function By Ken Sweet
+      Original Script By Ken Sweet on 10/15/2017
+      Updated Script By Ken Sweet on 02/04/2019
     .LINK
   #>
-  [CmdletBinding(DefaultParameterSetName = "New")]
+  [CmdletBinding(DefaultParameterSetName = "PoolName")]
   param (
-    [parameter(Mandatory = $True, ParameterSetName = "Update")]
+    [parameter(Mandatory = $True, ParameterSetName = "RSPool")]
     [MyRSPool]$RSPool,
-    [parameter(Mandatory = $False, ParameterSetName = "New")]
-    [String]$PoolName = "RunspacePool",
-    [parameter(Mandatory = $False, ValueFromPipeline = $True, ValueFromPipelineByPropertyName = $True)]
+    [parameter(Mandatory = $False, ParameterSetName = "PoolName")]
+    [String]$PoolName = "MyDefaultRSPool",
+    [parameter(Mandatory = $True, ParameterSetName = "PoolID")]
+    [Guid]$PoolID,
+    [parameter(Mandatory = $False, ValueFromPipeline = $True)]
     [Object[]]$InputObject,
     [String]$InputParam = "InputObject",
     [String]$JobName = "Job Name",
     [parameter(Mandatory = $True)]
     [ScriptBlock]$ScriptBlock,
     [Hashtable]$Parameters,
-    [parameter(Mandatory = $False, ParameterSetName = "New")]
-    [Hashtable]$Functions,
-    [parameter(Mandatory = $False, ParameterSetName = "New")]
-    [Hashtable]$Variables,
-    [parameter(Mandatory = $False, ParameterSetName = "New")]
-    [String[]]$Modules,
-    [parameter(Mandatory = $False, ParameterSetName = "New")]
-    [String[]]$PSSnapins,
-    [parameter(Mandatory = $False, ParameterSetName = "New")]
-    [ValidateRange(1, 16)]
-    [Int]$MaxJobs = 8,
-    [parameter(Mandatory = $False, ParameterSetName = "New")]
-    [Hashtable]$Hashtable = @{ "Enabled" = $True },
-    [parameter(Mandatory = $False, ParameterSetName = "New")]
-    [String]$Mutex
+    [Switch]$PassThru
   )
   Begin
   {
     Write-Verbose -Message "Enter Function Start-MyRSJob Begin Block"
     
-    if ($PSCmdlet.ParameterSetName -eq "Update")
+    Switch ($PSCmdlet.ParameterSetName)
     {
-      # Set Return if Updating Existing RSPool
-      $Return = $RSPool
+      "RSPool" {
+        # Set Pool
+        $TempPool = $RSPool
+        Break;
+      }
+      "PoolName" {
+        # Set Pool Name and Return Matching Pools
+        $TempPool = Start-MyRSPool -PoolName $PoolName -PassThru
+        Break;
+      }
+      "PoolID" {
+        # Set PoolID Return Matching Pools
+        $TempPool = Get-MyRSPool -PoolID $PoolID
+        Break;
+      }
     }
-    else
-    {
-      # Create Default Session State
-      $InitialSessionState = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
-      
-      # Import Modules
-      if ($PSBoundParameters.ContainsKey("Modules"))
-      {
-        [Void]$InitialSessionState.ImportPSModule($Modules)
-      }
-      
-      # Import PSSnapins
-      if ($PSBoundParameters.ContainsKey("PSSnapins"))
-      {
-        [Void]$InitialSessionState.ImportPSSnapIn($PSSnapins, [Ref]$Null)
-      }
-      
-      # Add Common Functions
-      if ($PSBoundParameters.ContainsKey("Functions"))
-      {
-        ForEach ($Key in $Functions.Keys)
-        {
-          #$InitialSessionState.Commands.Add(([System.Management.Automation.Runspaces.SessionStateFunctionEntry]::New($Key, $Functions[$Key])))
-          $InitialSessionState.Commands.Add((New-Object -TypeName System.Management.Automation.Runspaces.SessionStateFunctionEntry -ArgumentList $Key, $Functions[$Key]))
-        }
-      }
-      
-      # Add Default Variables
-      if ($PSBoundParameters.ContainsKey("Variables"))
-      {
-        ForEach ($Key in $Variables.Keys)
-        {
-          #$InitialSessionState.Variables.Add(([System.Management.Automation.Runspaces.SessionStateVariableEntry]::New($Key, $Variables[$Key], "$Key = $($Variables[$Key])")))
-          $InitialSessionState.Variables.Add((New-Object -TypeName System.Management.Automation.Runspaces.SessionStateVariableEntry -ArgumentList $Key, $Variables[$Key], "$Key = $($Variables[$Key])", ([System.Management.Automation.ScopedItemOptions]::AllScope)))
-        }
-      }
-      
-      # Create and Open RunSpacePool
-      $SyncedHash = [Hashtable]::Synchronized($Hashtable)
-      #$InitialSessionState.Variables.Add(([System.Management.Automation.Runspaces.SessionStateVariableEntry]::New("Hashtable", $Hashtable, "Hashtable = Synced Hashtable")))
-      $InitialSessionState.Variables.Add((New-Object -TypeName System.Management.Automation.Runspaces.SessionStateVariableEntry -ArgumentList "SyncedHash", $SyncedHash, "SyncedHash = Synced Hashtable", ([System.Management.Automation.ScopedItemOptions]::AllScope)))
-      if ($PSBoundParameters.ContainsKey("Mutex"))
-      {
-        #$InitialSessionState.Variables.Add(([System.Management.Automation.Runspaces.SessionStateVariableEntry]::New("Mutex", $Mutex, "Mutex = $Mutex")))
-        #$Return = [MyRSPool]::New($PoolName, $CreateRunspacePool, $Hashtable, $Mutex)
-        $InitialSessionState.Variables.Add((New-Object -TypeName System.Management.Automation.Runspaces.SessionStateVariableEntry -ArgumentList "Mutex", $Mutex, "Mutex = $Mutex", ([System.Management.Automation.ScopedItemOptions]::AllScope)))
-        $CreateRunspacePool = [Management.Automation.Runspaces.RunspaceFactory]::CreateRunspacePool(1, $MaxJobs, $InitialSessionState, $Host)
-        $Return = New-Object -TypeName "MyRSPool" -ArgumentList $PoolName, $CreateRunspacePool, $SyncedHash, $Mutex
-      }
-      else
-      {
-        #$Return = [MyRSPool]::New($PoolName, $CreateRunspacePool, $Hashtable)
-        $CreateRunspacePool = [Management.Automation.Runspaces.RunspaceFactory]::CreateRunspacePool(1, $MaxJobs, $InitialSessionState, $Host)
-        $Return = New-Object -TypeName "MyRSPool" -ArgumentList $PoolName, $CreateRunspacePool, $SyncedHash
-      }
-      
-      $Return.RunspacePool.ApartmentState = "STA"
-      #$Return.RunspacePool.ApartmentState = "MTA"
-      $Return.RunspacePool.CleanupInterval = [TimeSpan]::FromMinutes(2)
-      $Return.RunspacePool.Open()
-    }
+    
+    # List for New Jobs
+    #$NewJobs = [System.Collections.Generic.List[MyRSJob]]::New())
+    $NewJobs = New-Object -TypeName "System.Collections.Generic.List[MyRSJob]"
     
     Write-Verbose -Message "Exit Function Start-MyRSJob Begin Block"
   }
@@ -168,7 +99,7 @@ function Start-MyRSJob()
         # Create New PowerShell Instance with ScriptBlock
         $PowerShell = ([Management.Automation.PowerShell]::Create()).AddScript($ScriptBlock)
         # Set RunspacePool
-        $PowerShell.RunspacePool = $Return.RunspacePool
+        $PowerShell.RunspacePool = $TempPool.RunspacePool
         # Add Parameters
         [Void]$PowerShell.AddParameter($InputParam, $Object)
         if ($PSBoundParameters.ContainsKey("Parameters"))
@@ -184,8 +115,8 @@ function Start-MyRSJob()
         {
           $TempJobName = $($Object.$JobName)
         }
-        #[Void]$Return.Jobs.Add(([MyRSjob]::New($TempJobName, $PowerShell, $PowerShell.BeginInvoke(), $Object)))
-        [Void]$Return.Jobs.Add((New-Object -TypeName "MyRSjob" -ArgumentList $TempJobName, $PowerShell, $PowerShell.BeginInvoke(), $Object))
+        #[Void]$NewJobs.Add(([MyRSjob]::New($TempJobName, $PowerShell, $PowerShell.BeginInvoke(), $Object, $TempPool.Name, $TempPool.InstanceID)))
+        [Void]$NewJobs.Add((New-Object -TypeName "MyRSjob" -ArgumentList $TempJobName, $PowerShell, $PowerShell.BeginInvoke(), $Object, $TempPool.Name, $TempPool.InstanceID))
       }
     }
     else
@@ -193,14 +124,14 @@ function Start-MyRSJob()
       # Create New PowerShell Instance with ScriptBlock
       $PowerShell = ([Management.Automation.PowerShell]::Create()).AddScript($ScriptBlock)
       # Set RunspacePool
-      $PowerShell.RunspacePool = $Return.RunspacePool
+      $PowerShell.RunspacePool = $TempPool.RunspacePool
       # Add Parameters
       if ($PSBoundParameters.ContainsKey("Parameters"))
       {
         [Void]$PowerShell.AddParameters($Parameters)
       }
-      #[Void]$Return.Jobs.Add(([MyRSjob]::New($JobName, $PowerShell, $PowerShell.BeginInvoke(), $Null)))
-      [Void]$Return.Jobs.Add((New-Object -TypeName "MyRSjob" -ArgumentList $JobName, $PowerShell, $PowerShell.BeginInvoke(), $Null))
+      #[Void]$NewJobs.Add(([MyRSjob]::New($JobName, $PowerShell, $PowerShell.BeginInvoke(), $Null, $TempPool.Name, $TempPool.InstanceID)))
+      [Void]$NewJobs.Add((New-Object -TypeName "MyRSjob" -ArgumentList $JobName, $PowerShell, $PowerShell.BeginInvoke(), $Null, $TempPool.Name, $TempPool.InstanceID))
     }
     
     Write-Verbose -Message "Exit Function Start-MyRSJob Process Block"
@@ -209,10 +140,15 @@ function Start-MyRSJob()
   {
     Write-Verbose -Message "Enter Function Start-MyRSJob End Block"
     
-    # Return Jobs only if New RunspacePool
-    if ($PSCmdlet.ParameterSetName -eq "New")
+    if ($NewJobs.Count)
     {
-      $Return
+      $TempPool.Jobs.AddRange($NewJobs)
+      # Return Jobs only if New RunspacePool
+      if ($PassThru.IsPresent)
+      {
+        $NewJobs
+      }
+      $NewJobs.Clear()
     }
     
     Write-Verbose -Message "Exit Function Start-MyRSJob End Block"

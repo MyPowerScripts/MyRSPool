@@ -4,17 +4,19 @@ function Wait-MyRSJob()
 {
   <#
     .SYNOPSIS
-      Function to do something specific
+      Wait for RSJob to Finish
     .DESCRIPTION
-      Function to do something specific
+      Wait for RSJob to Finish
     .PARAMETER RSPool
       RunspacePool to search
-    .PARAMETER Name
-      Name of Job to search for
-    .PARAMETER InstanceId
-      InstanceId of Job to search for
-    .PARAMETER RSJob
-      RunspacePool Jobs to Process
+    .PARAMETER PoolName
+      Name of Pool to Get Jobs From
+    .PARAMETER PoolID
+      ID of Pool to Get Jobs From
+    .PARAMETER JobName
+      Name of Jobs to Get
+    .PARAMETER JobID
+      ID of Jobs to Get
     .PARAMETER State
       State of Jobs to search for
     .PARAMETER ScriptBlock
@@ -28,49 +30,71 @@ function Wait-MyRSJob()
       TimeSpace to wait
     .PARAMETER NoWait
       No Wait, Return when any Job states changes to Stopped, Completed, or Failed
+    .PARAMETER PassThru
+      Return the New Jobs to the Pipeline
     .EXAMPLE
-      $MyRSJobs = Wait-MyRSJob -RSPool $MyRSPool
+      $MyRSJobs = Wait-MyRSJob -PassThru
+  
+      Wait for and Get RSJobs from the Default RSPool
     .EXAMPLE
-      $MyRSJobs = Wait-MyRSJob -RSPool $MyRSPool -Name $JobName -State "Running"
-    .EXAMPLE
-      $MyRSJobs = Wait-MyRSJob -RSPool $MyRSPool -InstanceId $InstanceId
-    .EXAMPLE
-      $MyRSJobs = Wait-MyRSJob -RSPool $MyRSPool $RSJob $MyRSJobs
-    .EXAMPLE
-      $MyRSJobs = Wait-MyRSJob -RSPool $MyRSPool -RSJob $MyRSJobs
-    .EXAMPLE
-      $MyRSJobs = $MyRSJobs | Wait-MyRSJob -RSPool $MyRSPool
+      $MyRSJobs = Wait-MyRSJob -RSPool $RSPool -PassThru
+  
+      $MyRSJobs = Wait-MyRSJob -PoolName $PoolName -PassThru
+  
+      $MyRSJobs = Wait-MyRSJob -PoolID $PoolID -PassThru
+  
+      Wait for and Get RSJobs from the Specified RSPool
     .NOTES
-      Original Function By Ken Sweet
+      Original Script By Ken Sweet on 10/15/2017
+      Updated Script By Ken Sweet on 02/04/2019
     .LINK
   #>
-  [CmdletBinding(DefaultParameterSetName = "All")]
+  [CmdletBinding(DefaultParameterSetName = "JobNamePoolName")]
   param (
-    [parameter(Mandatory = $True)]
+    [parameter(Mandatory = $True, ParameterSetName = "JobIDPool")]
+    [parameter(Mandatory = $True, ParameterSetName = "JobNamePool")]
     [MyRSPool]$RSPool,
-    [parameter(Mandatory = $True, ParameterSetName = "Name")]
-    [String[]]$Name,
-    [parameter(Mandatory = $True, ParameterSetName = "InstanceId")]
-    [String[]]$InstanceId,
-    [parameter(Mandatory = $True, ValueFromPipeline = $True, ValueFromPipelineByPropertyName = $True, ParameterSetName = "Job")]
+    [parameter(Mandatory = $False, ParameterSetName = "JobIDPoolName")]
+    [parameter(Mandatory = $False, ParameterSetName = "JobNamePoolName")]
+    [String]$PoolName = "MyDefaultRSPool",
+    [parameter(Mandatory = $True, ParameterSetName = "JobIDPoolID")]
+    [parameter(Mandatory = $True, ParameterSetName = "JobNamePoolID")]
+    [Guid]$PoolID,
+    [parameter(Mandatory = $False, ParameterSetName = "JobNamePool")]
+    [parameter(Mandatory = $False, ParameterSetName = "JobNamePoolName")]
+    [parameter(Mandatory = $False, ParameterSetName = "JobNamePoolID")]
+    [String[]]$JobName = ".*",
+    [parameter(Mandatory = $True, ParameterSetName = "JobIDPool")]
+    [parameter(Mandatory = $True, ParameterSetName = "JobIDPoolName")]
+    [parameter(Mandatory = $True, ParameterSetName = "JobIDPoolID")]
+    [Guid[]]$JobID,
+    [parameter(Mandatory = $True, ValueFromPipeline = $True, ParameterSetName = "RSJob")]
     [MyRSJob[]]$RSJob,
-    [parameter(Mandatory = $False, ParameterSetName = "All")]
-    [parameter(Mandatory = $False, ParameterSetName = "Name")]
-    [parameter(Mandatory = $False, ParameterSetName = "InstanceId")]
+    [parameter(Mandatory = $False, ParameterSetName = "JobNamePool")]
+    [parameter(Mandatory = $False, ParameterSetName = "JobNamePoolName")]
+    [parameter(Mandatory = $False, ParameterSetName = "JobNamePoolID")]
+    [parameter(Mandatory = $False, ParameterSetName = "JobIDPool")]
+    [parameter(Mandatory = $False, ParameterSetName = "JobIDPoolName")]
+    [parameter(Mandatory = $False, ParameterSetName = "JobIDPoolID")]
     [ValidateSet("NotStarted", "Running", "Stopping", "Stopped", "Completed", "Failed", "Disconnected")]
     [String[]]$State,
-    [ScriptBlock]$SciptBlock = { [System.Windows.Forms.Application]::DoEvents() },
+    [ScriptBlock]$SciptBlock = { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 200 },
     [ValidateRange("0:00:00", "8:00:00")]
     [TimeSpan]$Wait = "0:05:00",
-    [Switch]$NoWait
+    [Switch]$NoWait,
+    [Switch]$PassThru
   )
   Begin
   {
     Write-Verbose -Message "Enter Function Wait-MyRSJob Begin Block"
     
     # Remove Invalid Get-MyRSJob Parameters
-    if ($PSCmdlet.ParameterSetName -ne "Job")
+    if ($PSCmdlet.ParameterSetName -ne "RSJob")
     {
+      if ($PSBoundParameters.ContainsKey("PassThru"))
+      {
+        [Void]$PSBoundParameters.Remove("PassThru")
+      }
       if ($PSBoundParameters.ContainsKey("Wait"))
       {
         [Void]$PSBoundParameters.Remove("Wait")
@@ -84,8 +108,10 @@ function Wait-MyRSJob()
         [Void]$PSBoundParameters.Remove("ScriptBlock")
       }
     }
-    # Create new ArrayList to Move Wait Code to End block
-    $Jobs = New-Object -TypeName System.Collections.ArrayList
+    
+    # List for Wait Jobs
+    #$WaitJobs = [System.Collections.Generic.List[MyRSJob]]::New())
+    $WaitJobs = New-Object -TypeName "System.Collections.Generic.List[MyRSJob]"
     
     Write-Verbose -Message "Exit Function Wait-MyRSJob Begin Block"
   }
@@ -94,13 +120,13 @@ function Wait-MyRSJob()
     Write-Verbose -Message "Enter Function Wait-MyRSJob Process Block"
     
     # Add Passed RSJobs to $Jobs
-    if ($PSCmdlet.ParameterSetName -eq "Job")
+    if ($PSCmdlet.ParameterSetName -eq "RSJob")
     {
-      $Jobs.AddRange(@($RSJob))
+      $WaitJobs.AddRange(@($RSJob))
     }
     else
     {
-      $Jobs.AddRange(@(Get-MyRSJob @PSBoundParameters))
+      $WaitJobs.AddRange(@(Get-MyRSJob @PSBoundParameters))
     }
 
     Write-Verbose -Message "Exit Function Wait-MyRSJob Process Block"
@@ -112,23 +138,27 @@ function Wait-MyRSJob()
     # Wait for Jobs to be Finshed
     if ($NoWait.IsPresent)
     {
-      While (@(($Jobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -eq $Jobs.Count)
+      While (@(($WaitJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -eq $WaitJobs.Count)
       {
         $SciptBlock.Invoke()
       }
     }
     else
     {
-      $WaitJobs = $Jobs.Clone()
+      [Object[]]$CheckJobs = $WaitJobs.ToArray()
       $Start = [DateTime]::Now
-      While (@(($WaitJobs = $WaitJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -and ((([DateTime]::Now - $Start) -le $Wait) -or ($Wait.Ticks -eq 0)))
+      While (@(($CheckJobs = $CheckJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -and ((([DateTime]::Now - $Start) -le $Wait) -or ($Wait.Ticks -eq 0)))
       {
         $SciptBlock.Invoke()
       }
     }
     
-    # Return Completed Jobs
-    @($Jobs | Where-Object -FilterScript { $PSItem.State -match "Stopped|Completed|Failed" })
+    if ($PassThru.IsPresent)
+    {
+      # Return Completed Jobs
+      $WaitJobs | Where-Object -FilterScript { $PSItem.State -match "Stopped|Completed|Failed" }
+    }
+    $WaitJobs.Clear()
     
     Write-Verbose -Message "Exit Function Wait-MyRSJob End Block"
   }
