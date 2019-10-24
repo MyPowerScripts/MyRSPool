@@ -72,12 +72,12 @@ function Start-MyRSJob()
       }
       "PoolName" {
         # Set Pool Name and Return Matching Pools
-        $TempPool = Start-MyRSPool -PoolName $PoolName -PassThru
+        $TempPool = [MyRSPool](Start-MyRSPool -PoolName $PoolName -PassThru)
         Break;
       }
       "PoolID" {
         # Set PoolID Return Matching Pools
-        $TempPool = Get-MyRSPool -PoolID $PoolID
+        $TempPool = [MyRSPool](Get-MyRSPool -PoolID $PoolID)
         Break;
       }
     }

@@ -57,7 +57,7 @@ function Start-MyRSPool()
   if ($Script:MyHiddenRSPool.ContainsKey($PoolName))
   {
     # Return Existing Runspace Pool
-    $Script:MyHiddenRSPool[$PoolName]
+    [MyRSPool]($Script:MyHiddenRSPool[$PoolName])
   }
   else
   {

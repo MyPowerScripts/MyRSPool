@@ -40,7 +40,7 @@ function Remove-MyRSJob()
   param (
     [parameter(Mandatory = $True, ParameterSetName = "JobIDPool")]
     [parameter(Mandatory = $True, ParameterSetName = "JobNamePool")]
-    [MyRSPool]$RSPool,
+    [MyRSPool[]]$RSPool,
     [parameter(Mandatory = $False, ParameterSetName = "JobIDPoolName")]
     [parameter(Mandatory = $False, ParameterSetName = "JobNamePoolName")]
     [String]$PoolName = "MyDefaultRSPool",
@@ -97,7 +97,7 @@ function Remove-MyRSJob()
     }
     else
     {
-      $TempJobs = @(Get-MyRSJob @PSBoundParameters)
+      $TempJobs = [MyRSJob[]](Get-MyRSJob @PSBoundParameters)
     }
     
     # Remove all Jobs, Stop all Running if Forced
@@ -136,10 +136,3 @@ function Remove-MyRSJob()
   }
 }
 #endregion
-
-
-
-
-
-
-

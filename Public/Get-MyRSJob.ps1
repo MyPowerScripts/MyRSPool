@@ -40,7 +40,7 @@ function Get-MyRSJob()
   param (
     [parameter(Mandatory = $True, ParameterSetName = "JobIDPool")]
     [parameter(Mandatory = $True, ParameterSetName = "JobNamePool")]
-    [MyRSPool]$RSPool,
+    [MyRSPool[]]$RSPool,
     [parameter(Mandatory = $False, ParameterSetName = "JobIDPoolName")]
     [parameter(Mandatory = $False, ParameterSetName = "JobNamePoolName")]
     [String]$PoolName = "MyDefaultRSPool",
@@ -81,12 +81,12 @@ function Get-MyRSJob()
       }
       "PoolName$" {
         # Set Pool Name and Return Matching Pools
-        $TempPools = Get-MyRSPool -PoolName $PoolName
+        $TempPools = [MyRSPool[]](Get-MyRSPool -PoolName $PoolName)
         Break;
       }
       "PoolID$" {
         # Set PoolID Return Matching Pools
-        $TempPools = Get-MyRSPool -PoolID $PoolID
+        $TempPools = [MyRSPool[]](Get-MyRSPool -PoolID $PoolID)
         Break;
       }
     }
@@ -102,13 +102,13 @@ function Get-MyRSJob()
       "^JobName" {
         # Set Job Name RegEx Pattern and Return Matching Jobs
         $NamePattern = $JobName -join "|"
-        $TempPools | ForEach-Object -Process { $PSItem.Jobs | Where-Object -FilterScript { $PSItem.State -match $StatePattern -and $PSItem.Name -match $NamePattern } }
+        [MyRSJob[]]($TempPools | ForEach-Object -Process { $PSItem.Jobs | Where-Object -FilterScript { $PSItem.State -match $StatePattern -and $PSItem.Name -match $NamePattern } })
         Break;
       }
       "^JobID" {
         # Set Job ID RegEx Pattern and Return Matching Jobs
         $IDPattern = $JobID -join "|"
-        $TempPools | ForEach-Object -Process { $PSItem.Jobs | Where-Object -FilterScript { $PSItem.State -match $StatePattern -and $PSItem.InstanceId -match $IDPattern } }
+        [MyRSJob[]]($TempPools | ForEach-Object -Process { $PSItem.Jobs | Where-Object -FilterScript { $PSItem.State -match $StatePattern -and $PSItem.InstanceId -match $IDPattern } })
         Break;
       }
     }
@@ -117,10 +117,3 @@ function Get-MyRSJob()
   }
 }
 #endregion
-
-
-
-
-
-
-

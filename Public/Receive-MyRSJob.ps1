@@ -42,7 +42,7 @@ function Receive-MyRSJob()
   param (
     [parameter(Mandatory = $True, ParameterSetName = "JobIDPool")]
     [parameter(Mandatory = $True, ParameterSetName = "JobNamePool")]
-    [MyRSPool]$RSPool,
+    [MyRSPool[]]$RSPool,
     [parameter(Mandatory = $False, ParameterSetName = "JobIDPoolName")]
     [parameter(Mandatory = $False, ParameterSetName = "JobNamePoolName")]
     [String]$PoolName = "MyDefaultRSPool",
@@ -93,7 +93,7 @@ function Receive-MyRSJob()
     else
     {
       [Void]$PSBoundParameters.Add("State", "Completed")
-      $TempJobs = @(Get-MyRSJob @PSBoundParameters)
+      $TempJobs = [MyRSJob[]](Get-MyRSJob @PSBoundParameters)
     }
     
     # Receive all Complted Jobs, Remove Job if Required
@@ -138,10 +138,3 @@ function Receive-MyRSJob()
   }
 }
 #endregion
-
-
-
-
-
-
-

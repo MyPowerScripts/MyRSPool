@@ -296,9 +296,7 @@ function Start-MyRSPool()
     [Hashtable]$Variables,
     [String[]]$Modules,
     [String[]]$PSSnapins,
-    [Hashtable]$Hashtable = @{
-      "Enabled" = $True
-    },
+    [Hashtable]$Hashtable = @{ "Enabled" = $True },
     [String]$Mutex,
     [ValidateRange(1, 64)]
     [Int]$MaxJobs = 8,
@@ -310,7 +308,7 @@ function Start-MyRSPool()
   if ($Script:MyHiddenRSPool.ContainsKey($PoolName))
   {
     # Return Existing Runspace Pool
-    $Script:MyHiddenRSPool[$PoolName]
+    [MyRSPool]($Script:MyHiddenRSPool[$PoolName])
   }
   else
   {
@@ -448,27 +446,22 @@ function Get-MyRSPool()
     
     switch ($PSCmdlet.ParameterSetName)
     {
-      "All" {
+      "All"
+      {
         # Return Matching Pools
-        @($Script:MyHiddenRSPool.Values | Where-Object -FilterScript {
-            $PSItem.State -match $StatePattern
-          })
+        [MyRSPool[]](($Script:MyHiddenRSPool.Values | Where-Object -FilterScript { $PSItem.State -match $StatePattern }))
         Break;
       }
       "PoolName" {
         # Set Pool Name and Return Matching Pools
         $NamePattern = $PoolName -join "|"
-        @($Script:MyHiddenRSPool.Values | Where-Object -FilterScript {
-            $PSItem.State -match $StatePattern -and $PSItem.Name -match $NamePattern
-          })
+        [MyRSPool[]]($Script:MyHiddenRSPool.Values | Where-Object -FilterScript { $PSItem.State -match $StatePattern -and $PSItem.Name -match $NamePattern})
         Break;
       }
       "PoolID" {
         # Set PoolID and Return Matching Pools
         $IDPattern = $PoolID -join "|"
-        @($Script:MyHiddenRSPool.Values | Where-Object -FilterScript {
-            $PSItem.State -match $StatePattern -and $PSItem.InstanceId -match $IDPattern
-          })
+        [MyRSPool[]]($Script:MyHiddenRSPool.Values | Where-Object -FilterScript { $PSItem.State -match $StatePattern -and $PSItem.InstanceId -match $IDPattern })
         Break;
       }
     }
@@ -533,7 +526,7 @@ function Close-MyRSPool()
     }
     else
     {
-      $TempPools = Get-MyRSPool @PSBoundParameters
+      $TempPools = [MyRSPool[]](Get-MyRSPool @PSBoundParameters)
     }
     
     # Close RunspacePools, This will Stop all Running Jobs
@@ -637,12 +630,12 @@ function Start-MyRSJob()
       }
       "PoolName" {
         # Set Pool Name and Return Matching Pools
-        $TempPool = Start-MyRSPool -PoolName $PoolName -PassThru
+        $TempPool = [MyRSPool](Start-MyRSPool -PoolName $PoolName -PassThru)
         Break;
       }
       "PoolID" {
         # Set PoolID Return Matching Pools
-        $TempPool = Get-MyRSPool -PoolID $PoolID
+        $TempPool = [MyRSPool](Get-MyRSPool -PoolID $PoolID)
         Break;
       }
     }
@@ -762,7 +755,7 @@ function Get-MyRSJob()
   param (
     [parameter(Mandatory = $True, ParameterSetName = "JobIDPool")]
     [parameter(Mandatory = $True, ParameterSetName = "JobNamePool")]
-    [MyRSPool]$RSPool,
+    [MyRSPool[]]$RSPool,
     [parameter(Mandatory = $False, ParameterSetName = "JobIDPoolName")]
     [parameter(Mandatory = $False, ParameterSetName = "JobNamePoolName")]
     [String]$PoolName = "MyDefaultRSPool",
@@ -803,12 +796,12 @@ function Get-MyRSJob()
       }
       "PoolName$" {
         # Set Pool Name and Return Matching Pools
-        $TempPools = Get-MyRSPool -PoolName $PoolName
+        $TempPools = [MyRSPool[]](Get-MyRSPool -PoolName $PoolName)
         Break;
       }
       "PoolID$" {
         # Set PoolID Return Matching Pools
-        $TempPools = Get-MyRSPool -PoolID $PoolID
+        $TempPools = [MyRSPool[]](Get-MyRSPool -PoolID $PoolID)
         Break;
       }
     }
@@ -824,21 +817,13 @@ function Get-MyRSJob()
       "^JobName" {
         # Set Job Name RegEx Pattern and Return Matching Jobs
         $NamePattern = $JobName -join "|"
-        $TempPools | ForEach-Object -Process {
-          $PSItem.Jobs | Where-Object -FilterScript {
-            $PSItem.State -match $StatePattern -and $PSItem.Name -match $NamePattern
-          }
-        }
+        [MyRSJob[]]($TempPools | ForEach-Object -Process { $PSItem.Jobs | Where-Object -FilterScript { $PSItem.State -match $StatePattern -and $PSItem.Name -match $NamePattern } })
         Break;
       }
       "^JobID" {
         # Set Job ID RegEx Pattern and Return Matching Jobs
         $IDPattern = $JobID -join "|"
-        $TempPools | ForEach-Object -Process {
-          $PSItem.Jobs | Where-Object -FilterScript {
-            $PSItem.State -match $StatePattern -and $PSItem.InstanceId -match $IDPattern
-          }
-        }
+        [MyRSJob[]]($TempPools | ForEach-Object -Process { $PSItem.Jobs | Where-Object -FilterScript { $PSItem.State -match $StatePattern -and $PSItem.InstanceId -match $IDPattern } })
         Break;
       }
     }
@@ -902,7 +887,7 @@ function Wait-MyRSJob()
   param (
     [parameter(Mandatory = $True, ParameterSetName = "JobIDPool")]
     [parameter(Mandatory = $True, ParameterSetName = "JobNamePool")]
-    [MyRSPool]$RSPool,
+    [MyRSPool[]]$RSPool,
     [parameter(Mandatory = $False, ParameterSetName = "JobIDPoolName")]
     [parameter(Mandatory = $False, ParameterSetName = "JobNamePoolName")]
     [String]$PoolName = "MyDefaultRSPool",
@@ -927,9 +912,7 @@ function Wait-MyRSJob()
     [parameter(Mandatory = $False, ParameterSetName = "JobIDPoolID")]
     [ValidateSet("NotStarted", "Running", "Stopping", "Stopped", "Completed", "Failed", "Disconnected")]
     [String[]]$State,
-    [ScriptBlock]$SciptBlock = {
-      [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 200
-    },
+    [ScriptBlock]$SciptBlock = { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 200 },
     [ValidateRange("0:00:00", "8:00:00")]
     [TimeSpan]$Wait = "0:05:00",
     [Switch]$NoWait,
@@ -973,11 +956,11 @@ function Wait-MyRSJob()
     # Add Passed RSJobs to $Jobs
     if ($PSCmdlet.ParameterSetName -eq "RSJob")
     {
-      $WaitJobs.AddRange(@($RSJob))
+      $WaitJobs.AddRange($RSJob)
     }
     else
     {
-      $WaitJobs.AddRange(@(Get-MyRSJob @PSBoundParameters))
+      $WaitJobs.AddRange([MyRSJob[]](Get-MyRSJob @PSBoundParameters))
     }
     
     Write-Verbose -Message "Exit Function Wait-MyRSJob Process Block"
@@ -989,9 +972,7 @@ function Wait-MyRSJob()
     # Wait for Jobs to be Finshed
     if ($NoWait.IsPresent)
     {
-      While (@(($WaitJobs | Where-Object -FilterScript {
-              $PSItem.State -notmatch "Stopped|Completed|Failed"
-            })).Count -eq $WaitJobs.Count)
+      While (@(($WaitJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -eq $WaitJobs.Count)
       {
         $SciptBlock.Invoke()
       }
@@ -1000,9 +981,7 @@ function Wait-MyRSJob()
     {
       [Object[]]$CheckJobs = $WaitJobs.ToArray()
       $Start = [DateTime]::Now
-      While (@(($CheckJobs = $CheckJobs | Where-Object -FilterScript {
-              $PSItem.State -notmatch "Stopped|Completed|Failed"
-            })).Count -and ((([DateTime]::Now - $Start) -le $Wait) -or ($Wait.Ticks -eq 0)))
+      While (@(($CheckJobs = $CheckJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -and ((([DateTime]::Now - $Start) -le $Wait) -or ($Wait.Ticks -eq 0)))
       {
         $SciptBlock.Invoke()
       }
@@ -1011,9 +990,7 @@ function Wait-MyRSJob()
     if ($PassThru.IsPresent)
     {
       # Return Completed Jobs
-      $WaitJobs | Where-Object -FilterScript {
-        $PSItem.State -match "Stopped|Completed|Failed"
-      }
+      [MyRSJob[]]($WaitJobs | Where-Object -FilterScript { $PSItem.State -match "Stopped|Completed|Failed" })
     }
     $WaitJobs.Clear()
     
@@ -1061,7 +1038,7 @@ function Stop-MyRSJob()
   param (
     [parameter(Mandatory = $True, ParameterSetName = "JobIDPool")]
     [parameter(Mandatory = $True, ParameterSetName = "JobNamePool")]
-    [MyRSPool]$RSPool,
+    [MyRSPool[]]$RSPool,
     [parameter(Mandatory = $False, ParameterSetName = "JobIDPoolName")]
     [parameter(Mandatory = $False, ParameterSetName = "JobNamePoolName")]
     [String]$PoolName = "MyDefaultRSPool",
@@ -1098,7 +1075,7 @@ function Stop-MyRSJob()
     }
     else
     {
-      $TempJobs = @(Get-MyRSJob @PSBoundParameters)
+      $TempJobs = [MyRSJob[]](Get-MyRSJob @PSBoundParameters)
     }
     
     # Stop all Jobs that have not Finished
@@ -1168,7 +1145,7 @@ function Receive-MyRSJob()
   param (
     [parameter(Mandatory = $True, ParameterSetName = "JobIDPool")]
     [parameter(Mandatory = $True, ParameterSetName = "JobNamePool")]
-    [MyRSPool]$RSPool,
+    [MyRSPool[]]$RSPool,
     [parameter(Mandatory = $False, ParameterSetName = "JobIDPoolName")]
     [parameter(Mandatory = $False, ParameterSetName = "JobNamePoolName")]
     [String]$PoolName = "MyDefaultRSPool",
@@ -1219,7 +1196,7 @@ function Receive-MyRSJob()
     else
     {
       [Void]$PSBoundParameters.Add("State", "Completed")
-      $TempJobs = @(Get-MyRSJob @PSBoundParameters)
+      $TempJobs = [MyRSJob[]](Get-MyRSJob @PSBoundParameters)
     }
     
     # Receive all Complted Jobs, Remove Job if Required
@@ -1306,7 +1283,7 @@ function Remove-MyRSJob()
   param (
     [parameter(Mandatory = $True, ParameterSetName = "JobIDPool")]
     [parameter(Mandatory = $True, ParameterSetName = "JobNamePool")]
-    [MyRSPool]$RSPool,
+    [MyRSPool[]]$RSPool,
     [parameter(Mandatory = $False, ParameterSetName = "JobIDPoolName")]
     [parameter(Mandatory = $False, ParameterSetName = "JobNamePoolName")]
     [String]$PoolName = "MyDefaultRSPool",
@@ -1363,7 +1340,7 @@ function Remove-MyRSJob()
     }
     else
     {
-      $TempJobs = @(Get-MyRSJob @PSBoundParameters)
+      $TempJobs = [MyRSJob[]](Get-MyRSJob @PSBoundParameters)
     }
     
     # Remove all Jobs, Stop all Running if Forced

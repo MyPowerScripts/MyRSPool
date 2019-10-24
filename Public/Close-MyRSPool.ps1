@@ -54,7 +54,7 @@ function Close-MyRSPool()
     }
     else
     {
-      $TempPools = Get-MyRSPool @PSBoundParameters
+      $TempPools = [MyRSPool[]](Get-MyRSPool @PSBoundParameters)
     }
     
     # Close RunspacePools, This will Stop all Running Jobs
@@ -84,9 +84,3 @@ function Close-MyRSPool()
   }
 }
 #endregion
-
-
-
-
-
-

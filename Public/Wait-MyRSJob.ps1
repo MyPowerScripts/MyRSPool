@@ -53,7 +53,7 @@ function Wait-MyRSJob()
   param (
     [parameter(Mandatory = $True, ParameterSetName = "JobIDPool")]
     [parameter(Mandatory = $True, ParameterSetName = "JobNamePool")]
-    [MyRSPool]$RSPool,
+    [MyRSPool[]]$RSPool,
     [parameter(Mandatory = $False, ParameterSetName = "JobIDPoolName")]
     [parameter(Mandatory = $False, ParameterSetName = "JobNamePoolName")]
     [String]$PoolName = "MyDefaultRSPool",
@@ -122,13 +122,13 @@ function Wait-MyRSJob()
     # Add Passed RSJobs to $Jobs
     if ($PSCmdlet.ParameterSetName -eq "RSJob")
     {
-      $WaitJobs.AddRange(@($RSJob))
+      $WaitJobs.AddRange($RSJob)
     }
     else
     {
-      $WaitJobs.AddRange(@(Get-MyRSJob @PSBoundParameters))
+      $WaitJobs.AddRange([MyRSJob[]](Get-MyRSJob @PSBoundParameters))
     }
-
+    
     Write-Verbose -Message "Exit Function Wait-MyRSJob Process Block"
   }
   End
@@ -155,8 +155,9 @@ function Wait-MyRSJob()
     
     if ($PassThru.IsPresent)
     {
+      $Host.EnterNestedPrompt()
       # Return Completed Jobs
-      $WaitJobs | Where-Object -FilterScript { $PSItem.State -match "Stopped|Completed|Failed" }
+      [MyRSJob[]]($WaitJobs | Where-Object -FilterScript { $PSItem.State -match "Stopped|Completed|Failed" })
     }
     $WaitJobs.Clear()
     
@@ -164,9 +165,3 @@ function Wait-MyRSJob()
   }
 }
 #endregion
-
-
-
-
-
-

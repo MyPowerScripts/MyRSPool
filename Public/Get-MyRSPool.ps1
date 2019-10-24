@@ -62,21 +62,22 @@ function Get-MyRSPool()
     
     switch ($PSCmdlet.ParameterSetName)
     {
-      "All" {
+      "All"
+      {
         # Return Matching Pools
-        @($Script:MyHiddenRSPool.Values | Where-Object -FilterScript { $PSItem.State -match $StatePattern })
+        [MyRSPool[]](($Script:MyHiddenRSPool.Values | Where-Object -FilterScript { $PSItem.State -match $StatePattern }))
         Break;
       }
       "PoolName" {
         # Set Pool Name and Return Matching Pools
         $NamePattern = $PoolName -join "|"
-        @($Script:MyHiddenRSPool.Values | Where-Object -FilterScript { $PSItem.State -match $StatePattern -and $PSItem.Name -match $NamePattern })
+        [MyRSPool[]]($Script:MyHiddenRSPool.Values | Where-Object -FilterScript { $PSItem.State -match $StatePattern -and $PSItem.Name -match $NamePattern})
         Break;
       }
       "PoolID" {
         # Set PoolID and Return Matching Pools
         $IDPattern = $PoolID -join "|"
-        @($Script:MyHiddenRSPool.Values | Where-Object -FilterScript { $PSItem.State -match $StatePattern -and $PSItem.InstanceId -match $IDPattern })
+        [MyRSPool[]]($Script:MyHiddenRSPool.Values | Where-Object -FilterScript { $PSItem.State -match $StatePattern -and $PSItem.InstanceId -match $IDPattern })
         Break;
       }
     }
@@ -85,10 +86,3 @@ function Get-MyRSPool()
   }
 }
 #endregion
-
-
-
-
-
-
-
