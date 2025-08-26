@@ -34,15 +34,15 @@ function Wait-MyRSJob()
       Return the New Jobs to the Pipeline
     .EXAMPLE
       $MyRSJobs = Wait-MyRSJob -PassThru
-  
+
       Wait for and Get RSJobs from the Default RSPool
     .EXAMPLE
       $MyRSJobs = Wait-MyRSJob -RSPool $RSPool -PassThru
-  
+
       $MyRSJobs = Wait-MyRSJob -PoolName $PoolName -PassThru
-  
+
       $MyRSJobs = Wait-MyRSJob -PoolID $PoolID -PassThru
-  
+
       Wait for and Get RSJobs from the Specified RSPool
     .NOTES
       Original Script By Ken Sweet on 10/15/2017
@@ -79,15 +79,14 @@ function Wait-MyRSJob()
     [ValidateSet("NotStarted", "Running", "Stopping", "Stopped", "Completed", "Failed", "Disconnected")]
     [String[]]$State,
     [ScriptBlock]$SciptBlock = { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 200 },
-    [ValidateRange("0:00:00", "8:00:00")]
-    [TimeSpan]$Wait = "0:05:00",
+    [UInt16]$Wait = 60,
     [Switch]$NoWait,
     [Switch]$PassThru
   )
-  Begin
+  begin
   {
     Write-Verbose -Message "Enter Function Wait-MyRSJob Begin Block"
-    
+
     # Remove Invalid Get-MyRSJob Parameters
     if ($PSCmdlet.ParameterSetName -ne "RSJob")
     {
@@ -108,37 +107,36 @@ function Wait-MyRSJob()
         [Void]$PSBoundParameters.Remove("ScriptBlock")
       }
     }
-    
+
     # List for Wait Jobs
-    #$WaitJobs = [System.Collections.Generic.List[MyRSJob]]::New())
-    $WaitJobs = New-Object -TypeName "System.Collections.Generic.List[MyRSJob]"
-    
+    $WaitJobs = [System.Collections.Generic.List[MyRSJob]]::New()
+
     Write-Verbose -Message "Exit Function Wait-MyRSJob Begin Block"
   }
-  Process
+  process
   {
     Write-Verbose -Message "Enter Function Wait-MyRSJob Process Block"
-    
+
     # Add Passed RSJobs to $Jobs
     if ($PSCmdlet.ParameterSetName -eq "RSJob")
     {
-      $WaitJobs.AddRange($RSJob)
+      $WaitJobs.AddRange([MyRSJob[]]($RSJob))
     }
     else
     {
       $WaitJobs.AddRange([MyRSJob[]](Get-MyRSJob @PSBoundParameters))
     }
-    
+
     Write-Verbose -Message "Exit Function Wait-MyRSJob Process Block"
   }
-  End
+  end
   {
     Write-Verbose -Message "Enter Function Wait-MyRSJob End Block"
-    
+
     # Wait for Jobs to be Finshed
     if ($NoWait.IsPresent)
     {
-      While (@(($WaitJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -eq $WaitJobs.Count)
+      while (@(($WaitJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -eq $WaitJobs.Count)
       {
         $SciptBlock.Invoke()
       }
@@ -146,22 +144,22 @@ function Wait-MyRSJob()
     else
     {
       [Object[]]$CheckJobs = $WaitJobs.ToArray()
-      $Start = [DateTime]::Now
-      While (@(($CheckJobs = $CheckJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -and ((([DateTime]::Now - $Start) -le $Wait) -or ($Wait.Ticks -eq 0)))
+      $StopWatch = [System.Diagnostics.Stopwatch]::StartNew()
+      while (@(($CheckJobs = $CheckJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -and (($StopWatch.TotalSeconds -le $Wait) -or ($Wait -eq 0)))
       {
         $SciptBlock.Invoke()
       }
+      $StopWatch.Stop()
     }
     
     if ($PassThru.IsPresent)
     {
-      $Host.EnterNestedPrompt()
       # Return Completed Jobs
       [MyRSJob[]]($WaitJobs | Where-Object -FilterScript { $PSItem.State -match "Stopped|Completed|Failed" })
     }
     $WaitJobs.Clear()
-    
+
     Write-Verbose -Message "Exit Function Wait-MyRSJob End Block"
   }
 }
-#endregion
+#endregion function Wait-MyRSJob

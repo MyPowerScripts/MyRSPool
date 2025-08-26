@@ -136,7 +136,7 @@ $TestFunction = @{}
 $TestFunction.Add("Test-Function", (Get-Command -Type Function -Name Test-Function).ScriptBlock)
 
 # Start and Get RSPool
-$RSPool = Start-MyRSPool -MaxJobs 8 -Functions $TestFunction -PassThru #-Mutex "TestMutex"
+$RSPool = Start-MyRSPool -MaxJobs 8 -Functions $TestFunction -PassThru -Mutex "TestMutex"
 
 # Create new RunspacePool and start 5 Jobs
 1..10 | Start-MyRSJob -ScriptBlock $ScriptBlock -PassThru | Out-String
@@ -156,6 +156,10 @@ Get-MyRSJob | Receive-MyRSJob -AutoRemove
 # Close RunspacePool
 Close-MyRSPool
 
+# **** Testing - Exit to Nested Prompt ****
+Write-Host -Object "Line Num: $((Get-PSCallStack).ScriptLineNumber)"
 $Host.EnterNestedPrompt()
+# **** Testing - Exit to Nested Prompt ****
+
 
 

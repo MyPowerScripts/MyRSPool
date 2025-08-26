@@ -246,7 +246,7 @@ public class MyRSPool
 "@
 Add-Type -TypeDefinition $MyCustom -Debug:$False
 
-$Script:MyHiddenRSPool = New-Object -TypeName "System.Collections.Generic.Dictionary[[String], [MyRSPool]]"
+$Script:MyHiddenRSPool = [System.Collections.Generic.Dictionary[[String], [MyRSPool]]]::New()
 
 #endregion
 
@@ -332,8 +332,7 @@ function Start-MyRSPool()
     {
       ForEach ($Key in $Functions.Keys)
       {
-        #$InitialSessionState.Commands.Add(([System.Management.Automation.Runspaces.SessionStateFunctionEntry]::New($Key, $Functions[$Key])))
-        $InitialSessionState.Commands.Add((New-Object -TypeName System.Management.Automation.Runspaces.SessionStateFunctionEntry -ArgumentList $Key, $Functions[$Key]))
+        $InitialSessionState.Commands.Add(([System.Management.Automation.Runspaces.SessionStateFunctionEntry]::New($Key, $Functions[$Key])))
       }
     }
     
@@ -342,28 +341,23 @@ function Start-MyRSPool()
     {
       ForEach ($Key in $Variables.Keys)
       {
-        #$InitialSessionState.Variables.Add(([System.Management.Automation.Runspaces.SessionStateVariableEntry]::New($Key, $Variables[$Key], "$Key = $($Variables[$Key])", ([System.Management.Automation.ScopedItemOptions]::AllScope))))
-        $InitialSessionState.Variables.Add((New-Object -TypeName System.Management.Automation.Runspaces.SessionStateVariableEntry -ArgumentList $Key, $Variables[$Key], "$Key = $($Variables[$Key])", ([System.Management.Automation.ScopedItemOptions]::AllScope)))
+        $InitialSessionState.Variables.Add(([System.Management.Automation.Runspaces.SessionStateVariableEntry]::New($Key, $Variables[$Key], "$Key = $($Variables[$Key])", ([System.Management.Automation.ScopedItemOptions]::AllScope))))
       }
     }
     
     # Create and Open RunSpacePool
     $SyncedHash = [Hashtable]::Synchronized($Hashtable)
-    #$InitialSessionState.Variables.Add(([System.Management.Automation.Runspaces.SessionStateVariableEntry]::New("SyncedHash", $SyncedHash, "SyncedHash = Synced Hashtable", ([System.Management.Automation.ScopedItemOptions]::AllScope))))
-    $InitialSessionState.Variables.Add((New-Object -TypeName System.Management.Automation.Runspaces.SessionStateVariableEntry -ArgumentList "SyncedHash", $SyncedHash, "SyncedHash = Synced Hashtable", ([System.Management.Automation.ScopedItemOptions]::AllScope)))
+    $InitialSessionState.Variables.Add(([System.Management.Automation.Runspaces.SessionStateVariableEntry]::New("SyncedHash", $SyncedHash, "SyncedHash = Synced Hashtable", ([System.Management.Automation.ScopedItemOptions]::AllScope))))
     if ($PSBoundParameters.ContainsKey("Mutex"))
     {
-      #$InitialSessionState.Variables.Add(([System.Management.Automation.Runspaces.SessionStateVariableEntry]::New("Mutex", $Mutex, "Mutex = $Mutex", ([System.Management.Automation.ScopedItemOptions]::AllScope))))
-      $InitialSessionState.Variables.Add((New-Object -TypeName System.Management.Automation.Runspaces.SessionStateVariableEntry -ArgumentList "Mutex", $Mutex, "Mutex = $Mutex", ([System.Management.Automation.ScopedItemOptions]::AllScope)))
+      $InitialSessionState.Variables.Add(([System.Management.Automation.Runspaces.SessionStateVariableEntry]::New("Mutex", $Mutex, "Mutex = $Mutex", ([System.Management.Automation.ScopedItemOptions]::AllScope))))
       $CreateRunspacePool = [Management.Automation.Runspaces.RunspaceFactory]::CreateRunspacePool(1, $MaxJobs, $InitialSessionState, $Host)
-      #$RSPool = [MyRSPool]::New($PoolName, $CreateRunspacePool, $SyncedHash, $Mutex)
-      $RSPool = New-Object -TypeName "MyRSPool" -ArgumentList $PoolName, $CreateRunspacePool, $SyncedHash, $Mutex
+      $RSPool = [MyRSPool]::New($PoolName, $CreateRunspacePool, $SyncedHash, $Mutex)
     }
     else
     {
       $CreateRunspacePool = [Management.Automation.Runspaces.RunspaceFactory]::CreateRunspacePool(1, $MaxJobs, $InitialSessionState, $Host)
-      #$RSPool = [MyRSPool]::New($PoolName, $CreateRunspacePool, $SyncedHash)
-      $RSPool = New-Object -TypeName "MyRSPool" -ArgumentList $PoolName, $CreateRunspacePool, $SyncedHash
+      $RSPool = [MyRSPool]::New($PoolName, $CreateRunspacePool, $SyncedHash)
     }
     
     $RSPool.RunspacePool.ApartmentState = "STA"
@@ -641,8 +635,7 @@ function Start-MyRSJob()
     }
     
     # List for New Jobs
-    #$NewJobs = [System.Collections.Generic.List[MyRSJob]]::New())
-    $NewJobs = New-Object -TypeName "System.Collections.Generic.List[MyRSJob]"
+    $NewJobs = [System.Collections.Generic.List[MyRSJob]]::New()
     
     Write-Verbose -Message "Exit Function Start-MyRSJob Begin Block"
   }
@@ -673,8 +666,7 @@ function Start-MyRSJob()
         {
           $TempJobName = $($Object.$JobName)
         }
-        #[Void]$NewJobs.Add(([MyRSjob]::New($TempJobName, $PowerShell, $PowerShell.BeginInvoke(), $Object, $TempPool.Name, $TempPool.InstanceID)))
-        [Void]$NewJobs.Add((New-Object -TypeName "MyRSjob" -ArgumentList $TempJobName, $PowerShell, $PowerShell.BeginInvoke(), $Object, $TempPool.Name, $TempPool.InstanceID))
+        [Void]$NewJobs.Add(([MyRSjob]::New($TempJobName, $PowerShell, $PowerShell.BeginInvoke(), $Object, $TempPool.Name, $TempPool.InstanceID)))
       }
     }
     else
@@ -688,8 +680,7 @@ function Start-MyRSJob()
       {
         [Void]$PowerShell.AddParameters($Parameters)
       }
-      #[Void]$NewJobs.Add(([MyRSjob]::New($JobName, $PowerShell, $PowerShell.BeginInvoke(), $Null, $TempPool.Name, $TempPool.InstanceID)))
-      [Void]$NewJobs.Add((New-Object -TypeName "MyRSjob" -ArgumentList $JobName, $PowerShell, $PowerShell.BeginInvoke(), $Null, $TempPool.Name, $TempPool.InstanceID))
+      [Void]$NewJobs.Add(([MyRSjob]::New($JobName, $PowerShell, $PowerShell.BeginInvoke(), $Null, $TempPool.Name, $TempPool.InstanceID)))
     }
     
     Write-Verbose -Message "Exit Function Start-MyRSJob Process Block"
@@ -868,15 +859,15 @@ function Wait-MyRSJob()
       Return the New Jobs to the Pipeline
     .EXAMPLE
       $MyRSJobs = Wait-MyRSJob -PassThru
-  
+
       Wait for and Get RSJobs from the Default RSPool
     .EXAMPLE
       $MyRSJobs = Wait-MyRSJob -RSPool $RSPool -PassThru
-  
+
       $MyRSJobs = Wait-MyRSJob -PoolName $PoolName -PassThru
-  
+
       $MyRSJobs = Wait-MyRSJob -PoolID $PoolID -PassThru
-  
+
       Wait for and Get RSJobs from the Specified RSPool
     .NOTES
       Original Script By Ken Sweet on 10/15/2017
@@ -913,15 +904,14 @@ function Wait-MyRSJob()
     [ValidateSet("NotStarted", "Running", "Stopping", "Stopped", "Completed", "Failed", "Disconnected")]
     [String[]]$State,
     [ScriptBlock]$SciptBlock = { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 200 },
-    [ValidateRange("0:00:00", "8:00:00")]
-    [TimeSpan]$Wait = "0:05:00",
+    [UInt16]$Wait = 60,
     [Switch]$NoWait,
     [Switch]$PassThru
   )
-  Begin
+  begin
   {
     Write-Verbose -Message "Enter Function Wait-MyRSJob Begin Block"
-    
+
     # Remove Invalid Get-MyRSJob Parameters
     if ($PSCmdlet.ParameterSetName -ne "RSJob")
     {
@@ -942,37 +932,36 @@ function Wait-MyRSJob()
         [Void]$PSBoundParameters.Remove("ScriptBlock")
       }
     }
-    
+
     # List for Wait Jobs
-    #$WaitJobs = [System.Collections.Generic.List[MyRSJob]]::New())
-    $WaitJobs = New-Object -TypeName "System.Collections.Generic.List[MyRSJob]"
-    
+    $WaitJobs = [System.Collections.Generic.List[MyRSJob]]::New()
+
     Write-Verbose -Message "Exit Function Wait-MyRSJob Begin Block"
   }
-  Process
+  process
   {
     Write-Verbose -Message "Enter Function Wait-MyRSJob Process Block"
-    
+
     # Add Passed RSJobs to $Jobs
     if ($PSCmdlet.ParameterSetName -eq "RSJob")
     {
-      $WaitJobs.AddRange($RSJob)
+      $WaitJobs.AddRange([MyRSJob[]]($RSJob))
     }
     else
     {
       $WaitJobs.AddRange([MyRSJob[]](Get-MyRSJob @PSBoundParameters))
     }
-    
+
     Write-Verbose -Message "Exit Function Wait-MyRSJob Process Block"
   }
-  End
+  end
   {
     Write-Verbose -Message "Enter Function Wait-MyRSJob End Block"
-    
+
     # Wait for Jobs to be Finshed
     if ($NoWait.IsPresent)
     {
-      While (@(($WaitJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -eq $WaitJobs.Count)
+      while (@(($WaitJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -eq $WaitJobs.Count)
       {
         $SciptBlock.Invoke()
       }
@@ -980,11 +969,12 @@ function Wait-MyRSJob()
     else
     {
       [Object[]]$CheckJobs = $WaitJobs.ToArray()
-      $Start = [DateTime]::Now
-      While (@(($CheckJobs = $CheckJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -and ((([DateTime]::Now - $Start) -le $Wait) -or ($Wait.Ticks -eq 0)))
+      $StopWatch = [System.Diagnostics.Stopwatch]::StartNew()
+      while (@(($CheckJobs = $CheckJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -and (($StopWatch.TotalSeconds -le $Wait) -or ($Wait -eq 0)))
       {
         $SciptBlock.Invoke()
       }
+      $StopWatch.Stop()
     }
     
     if ($PassThru.IsPresent)
@@ -993,11 +983,11 @@ function Wait-MyRSJob()
       [MyRSJob[]]($WaitJobs | Where-Object -FilterScript { $PSItem.State -match "Stopped|Completed|Failed" })
     }
     $WaitJobs.Clear()
-    
+
     Write-Verbose -Message "Exit Function Wait-MyRSJob End Block"
   }
 }
-#endregion
+#endregion function Wait-MyRSJob
 
 #region function Stop-MyRSJob
 function Stop-MyRSJob()
@@ -1179,8 +1169,7 @@ function Receive-MyRSJob()
     }
     
     # List for Remove Jobs
-    #$RemoveJobs = [System.Collections.Generic.List[MyRSJob]]::New())
-    $RemoveJobs = New-Object -TypeName "System.Collections.Generic.List[MyRSJob]"
+    $RemoveJobs = [System.Collections.Generic.List[MyRSJob]]::New()
     
     Write-Verbose -Message "Exit Function Receive-MyRSJob Begin Block"
   }
@@ -1324,8 +1313,7 @@ function Remove-MyRSJob()
     }
     
     # List for Remove Jobs
-    #$RemoveJobs = [System.Collections.Generic.List[MyRSJob]]::New())
-    $RemoveJobs = New-Object -TypeName "System.Collections.Generic.List[MyRSJob]"
+    $RemoveJobs = [System.Collections.Generic.List[MyRSJob]]::New()
     
     Write-Verbose -Message "Exit Function Remove-MyRSJob Begin Block"
   }

@@ -81,8 +81,7 @@ function Remove-MyRSJob()
     }
     
     # List for Remove Jobs
-    #$RemoveJobs = [System.Collections.Generic.List[MyRSJob]]::New())
-    $RemoveJobs = New-Object -TypeName "System.Collections.Generic.List[MyRSJob]"
+    $RemoveJobs = [System.Collections.Generic.List[MyRSJob]]::New()
     
     Write-Verbose -Message "Exit Function Remove-MyRSJob Begin Block"
   }

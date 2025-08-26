@@ -267,7 +267,7 @@ public class MyRSPool
 "@
 Add-Type -TypeDefinition $MyCustom -Debug:$False
 
-$Script:MyHiddenRSPool = New-Object -TypeName "System.Collections.Generic.Dictionary[[String], [MyRSPool]]"
+$Script:MyHiddenRSPool = [System.Collections.Generic.Dictionary[[String], [MyRSPool]]]::New()
 
 #endregion
 

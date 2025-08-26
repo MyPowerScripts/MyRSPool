@@ -84,7 +84,7 @@ function Start-MyRSJob()
     
     # List for New Jobs
     #$NewJobs = [System.Collections.Generic.List[MyRSJob]]::New())
-    $NewJobs = New-Object -TypeName "System.Collections.Generic.List[MyRSJob]"
+    $NewJobs = [System.Collections.Generic.List[MyRSJob]]::New()
     
     Write-Verbose -Message "Exit Function Start-MyRSJob Begin Block"
   }
@@ -115,8 +115,7 @@ function Start-MyRSJob()
         {
           $TempJobName = $($Object.$JobName)
         }
-        #[Void]$NewJobs.Add(([MyRSjob]::New($TempJobName, $PowerShell, $PowerShell.BeginInvoke(), $Object, $TempPool.Name, $TempPool.InstanceID)))
-        [Void]$NewJobs.Add((New-Object -TypeName "MyRSjob" -ArgumentList $TempJobName, $PowerShell, $PowerShell.BeginInvoke(), $Object, $TempPool.Name, $TempPool.InstanceID))
+        [Void]$NewJobs.Add(([MyRSjob]::New($TempJobName, $PowerShell, $PowerShell.BeginInvoke(), $Object, $TempPool.Name, $TempPool.InstanceID)))
       }
     }
     else
@@ -130,8 +129,7 @@ function Start-MyRSJob()
       {
         [Void]$PowerShell.AddParameters($Parameters)
       }
-      #[Void]$NewJobs.Add(([MyRSjob]::New($JobName, $PowerShell, $PowerShell.BeginInvoke(), $Null, $TempPool.Name, $TempPool.InstanceID)))
-      [Void]$NewJobs.Add((New-Object -TypeName "MyRSjob" -ArgumentList $JobName, $PowerShell, $PowerShell.BeginInvoke(), $Null, $TempPool.Name, $TempPool.InstanceID))
+      [Void]$NewJobs.Add(([MyRSjob]::New($JobName, $PowerShell, $PowerShell.BeginInvoke(), $Null, $TempPool.Name, $TempPool.InstanceID)))
     }
     
     Write-Verbose -Message "Exit Function Start-MyRSJob Process Block"
