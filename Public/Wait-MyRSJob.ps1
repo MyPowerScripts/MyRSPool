@@ -143,9 +143,8 @@ function Wait-MyRSJob()
     }
     else
     {
-      [Object[]]$CheckJobs = $WaitJobs.ToArray()
       $StopWatch = [System.Diagnostics.Stopwatch]::StartNew()
-      while (@(($CheckJobs = $CheckJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -and (($StopWatch.TotalSeconds -le $Wait) -or ($Wait -eq 0)))
+      while ((@(($WaitJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" }| Where-Object -FilterScript { -not [String]::IsNullOrEmpty($PSItem) })).Count -gt 0) -and (($StopWatch.TotalSeconds -le $Wait) -or ($Wait -eq 0)))
       {
         $SciptBlock.Invoke()
       }

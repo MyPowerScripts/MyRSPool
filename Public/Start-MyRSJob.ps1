@@ -1,6 +1,6 @@
 ﻿
 #region function Start-MyRSJob
-function Start-MyRSJob()
+Function Start-MyRSJob()
 {
   <#
     .SYNOPSIS
@@ -43,7 +43,7 @@ function Start-MyRSJob()
     .LINK
   #>
   [CmdletBinding(DefaultParameterSetName = "PoolName")]
-  param (
+  Param (
     [parameter(Mandatory = $True, ParameterSetName = "RSPool")]
     [MyRSPool]$RSPool,
     [parameter(Mandatory = $False, ParameterSetName = "PoolName")]
@@ -51,7 +51,7 @@ function Start-MyRSJob()
     [parameter(Mandatory = $True, ParameterSetName = "PoolID")]
     [Guid]$PoolID,
     [parameter(Mandatory = $False, ValueFromPipeline = $True)]
-    [Object[]]$InputObject,
+    [Object]$InputObject,
     [String]$InputParam = "InputObject",
     [String]$JobName = "Job Name",
     [parameter(Mandatory = $True)]
@@ -83,7 +83,6 @@ function Start-MyRSJob()
     }
     
     # List for New Jobs
-    #$NewJobs = [System.Collections.Generic.List[MyRSJob]]::New())
     $NewJobs = [System.Collections.Generic.List[MyRSJob]]::New()
     
     Write-Verbose -Message "Exit Function Start-MyRSJob Begin Block"
@@ -92,40 +91,37 @@ function Start-MyRSJob()
   {
     Write-Verbose -Message "Enter Function Start-MyRSJob Process Block"
     
-    if ($PSBoundParameters.ContainsKey("InputObject"))
-    {
-      ForEach ($Object in $InputObject)
-      {
-        # Create New PowerShell Instance with ScriptBlock
-        $PowerShell = ([Management.Automation.PowerShell]::Create()).AddScript($ScriptBlock)
-        # Set RunspacePool
-        $PowerShell.RunspacePool = $TempPool.RunspacePool
-        # Add Parameters
-        [Void]$PowerShell.AddParameter($InputParam, $Object)
-        if ($PSBoundParameters.ContainsKey("Parameters"))
-        {
-          [Void]$PowerShell.AddParameters($Parameters)
-        }
-        # set Job Name
-        if (($Object -is [String]) -or ($Object -is [ValueType]))
-        {
-          $TempJobName = "$JobName - $($Object)"
-        }
-        else
-        {
-          $TempJobName = $($Object.$JobName)
-        }
-        [Void]$NewJobs.Add(([MyRSjob]::New($TempJobName, $PowerShell, $PowerShell.BeginInvoke(), $Object, $TempPool.Name, $TempPool.InstanceID)))
-      }
-    }
-    else
+    If ($PSBoundParameters.ContainsKey("InputObject"))
     {
       # Create New PowerShell Instance with ScriptBlock
       $PowerShell = ([Management.Automation.PowerShell]::Create()).AddScript($ScriptBlock)
       # Set RunspacePool
       $PowerShell.RunspacePool = $TempPool.RunspacePool
       # Add Parameters
-      if ($PSBoundParameters.ContainsKey("Parameters"))
+      [Void]$PowerShell.AddParameter($InputParam, $InputObject)
+      If ($PSBoundParameters.ContainsKey("Parameters"))
+      {
+        [Void]$PowerShell.AddParameters($Parameters)
+      }
+      # set Job Name
+      If (($Object -is [String]) -or ($Object -is [ValueType]))
+      {
+        $TempJobName = "$JobName - $($Object)"
+      }
+      Else
+      {
+        $TempJobName = $($Object.$JobName)
+      }
+      [Void]$NewJobs.Add(([MyRSjob]::New($TempJobName, $PowerShell, $PowerShell.BeginInvoke(), $Object, $TempPool.Name, $TempPool.InstanceID)))
+    }
+    Else
+    {
+      # Create New PowerShell Instance with ScriptBlock
+      $PowerShell = ([Management.Automation.PowerShell]::Create()).AddScript($ScriptBlock)
+      # Set RunspacePool
+      $PowerShell.RunspacePool = $TempPool.RunspacePool
+      # Add Parameters
+      If ($PSBoundParameters.ContainsKey("Parameters"))
       {
         [Void]$PowerShell.AddParameters($Parameters)
       }
@@ -138,11 +134,11 @@ function Start-MyRSJob()
   {
     Write-Verbose -Message "Enter Function Start-MyRSJob End Block"
     
-    if ($NewJobs.Count)
+    If ($NewJobs.Count)
     {
       $TempPool.Jobs.AddRange($NewJobs)
       # Return Jobs only if New RunspacePool
-      if ($PassThru.IsPresent)
+      If ($PassThru.IsPresent)
       {
         $NewJobs
       }

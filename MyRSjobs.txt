@@ -314,7 +314,6 @@ function Start-MyRSPool()
   {
     # Create Default Session State
     $InitialSessionState = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
-    $InitialSessionState.ExecutionPolicy = [Microsoft.PowerShell.ExecutionPolicy]::RemoteSigned
     
     # Import Modules
     if ($PSBoundParameters.ContainsKey("Modules"))
@@ -604,7 +603,7 @@ function Start-MyRSJob()
     [parameter(Mandatory = $True, ParameterSetName = "PoolID")]
     [Guid]$PoolID,
     [parameter(Mandatory = $False, ValueFromPipeline = $True)]
-    [Object]$InputObject,
+    [Object[]]$InputObject,
     [String]$InputParam = "InputObject",
     [String]$JobName = "Job Name",
     [parameter(Mandatory = $True)]
@@ -646,26 +645,29 @@ function Start-MyRSJob()
     
     if ($PSBoundParameters.ContainsKey("InputObject"))
     {
-      # Create New PowerShell Instance with ScriptBlock
-      $PowerShell = ([Management.Automation.PowerShell]::Create()).AddScript($ScriptBlock)
-      # Set RunspacePool
-      $PowerShell.RunspacePool = $TempPool.RunspacePool
-      # Add Parameters
-      [Void]$PowerShell.AddParameter($InputParam, $InputObject)
-      If ($PSBoundParameters.ContainsKey("Parameters"))
+      ForEach ($Object in $InputObject)
       {
-        [Void]$PowerShell.AddParameters($Parameters)
+        # Create New PowerShell Instance with ScriptBlock
+        $PowerShell = ([Management.Automation.PowerShell]::Create()).AddScript($ScriptBlock)
+        # Set RunspacePool
+        $PowerShell.RunspacePool = $TempPool.RunspacePool
+        # Add Parameters
+        [Void]$PowerShell.AddParameter($InputParam, $Object)
+        if ($PSBoundParameters.ContainsKey("Parameters"))
+        {
+          [Void]$PowerShell.AddParameters($Parameters)
+        }
+        # set Job Name
+        if (($Object -is [String]) -or ($Object -is [ValueType]))
+        {
+          $TempJobName = "$JobName - $($Object)"
+        }
+        else
+        {
+          $TempJobName = $($Object.$JobName)
+        }
+        [Void]$NewJobs.Add(([MyRSjob]::New($TempJobName, $PowerShell, $PowerShell.BeginInvoke(), $Object, $TempPool.Name, $TempPool.InstanceID)))
       }
-      # set Job Name
-      If (($Object -is [String]) -or ($Object -is [ValueType]))
-      {
-        $TempJobName = "$JobName - $($Object)"
-      }
-      Else
-      {
-        $TempJobName = $($Object.$JobName)
-      }
-      [Void]$NewJobs.Add(([MyRSjob]::New($TempJobName, $PowerShell, $PowerShell.BeginInvoke(), $Object, $TempPool.Name, $TempPool.InstanceID)))
     }
     else
     {
@@ -966,8 +968,9 @@ function Wait-MyRSJob()
     }
     else
     {
+      [Object[]]$CheckJobs = $WaitJobs.ToArray()
       $StopWatch = [System.Diagnostics.Stopwatch]::StartNew()
-      while ((@(($WaitJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" }| Where-Object -FilterScript { -not [String]::IsNullOrEmpty($PSItem) })).Count -gt 0) -and (($StopWatch.TotalSeconds -le $Wait) -or ($Wait -eq 0)))
+      while (@(($CheckJobs = $CheckJobs | Where-Object -FilterScript { $PSItem.State -notmatch "Stopped|Completed|Failed" })).Count -and (($StopWatch.TotalSeconds -le $Wait) -or ($Wait -eq 0)))
       {
         $SciptBlock.Invoke()
       }
